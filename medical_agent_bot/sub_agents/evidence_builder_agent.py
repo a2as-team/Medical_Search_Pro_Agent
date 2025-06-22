@@ -8,7 +8,7 @@ med_evidence_builder = LlmAgent(
 
 **Input Handling:**
 1.  **Strict Confirmation Message Handling:**
-    IF, AND ONLY IF, the *complete and exact* input received by you is the literal string `we proceed with your request ✅` (with no leading/trailing spaces or any other characters),
+    IF, AND ONLY IF, the *complete and exact* input received by you is the literal string `we proceed with your request ✅` (with no leading/trailing spaces or any other characters){fetched_articles},
     THEN, your *entire and sole* output MUST be the literal string: `⏳ Processing your request… just a sec!`
     DO NOT output any other text, characters, or formatting. DO NOT proceed with any other instructions or tasks (like table generation or synthesis) if this condition is met. Your response must be *only* this exact string.
 

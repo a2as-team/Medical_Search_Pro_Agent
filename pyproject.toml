@@ -1,14 +1,34 @@
-[project]
-name = "Medical_Search_Pro_Agent"
+[tool.poetry]
+name = "medical-search-pro-agent"
 version = "0.1.0"
-description = "Ahsan Ali Gill  ahs462agk@gmail.com"
+description = "An agent-based system to search, analyze, and deliver biomedical literature."
+authors = ["Ahsan Ali Gill <ahs462agk@gmail.com>"]
 readme = "README.md"
-requires-python = ">=3.13"
-dependencies = [
-    "anyio>=4.9.0",
-    "google-adk>=1.1.1",
-    "secure-smtplib>=0.1.1",
-    "python-dotenv>=1.0.0",
-    "requests>=2.32.3",
-    "google-cloud-aiplatform[adk,agent-engines]>=1.95.1",
-]
+packages = [{include = "medical_agent_bot"}]
+
+[tool.poetry.dependencies]
+python = ">=3.13"
+anyio = ">=4.9.0"
+google-adk = ">=1.1.1"
+secure-smtplib = ">=0.1.1"
+python-dotenv = ">=1.0.0"
+requests = ">=2.32.3"
+google-cloud-aiplatform = {extras = ["adk", "agent-engines"], version = "^1.98.0"}
+cloudpickle = "^3.0.0"
+absl-py = "^2.1.0"
+google-auth = "^2.40.3"
+httpx = "^0.28.1"
+sse-starlette = "^2.3.6"
+fastapi = "^0.115.13"
+uvicorn = "^0.34.3"
+psycopg2-binary = "^2.9.10"
+
+[tool.poetry.scripts]
+adk-short-bot = "adk_short_bot:app"
+deploy-local = "deployment.local:main"
+deploy-remote = "deployment.remote:main"
+cleanup = "deployment.cleanup:cleanup_deployment"
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
