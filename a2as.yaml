@@ -1,0 +1,338 @@
+manifest:
+  version: "0.1.3"
+  schema: https://a2as.org/cert/schema
+  subject:
+    name: ahsan462aggk/medical_search_pro_agent
+    source: https://github.com/ahsan462aggk/medical_search_pro_agent
+    branch: main
+    commit: "81043743"
+    scope: [medical_agent_bot/agent.py, medical_agent_bot/sub_agents/email_dispatcher_agent.py, medical_agent_bot/sub_agents/evidence_builder_agent.py,
+      medical_agent_bot/sub_agents/query_ingestor_agent.py, medical_agent_bot/tools/collect_user_email.py]
+  issued:
+    by: A2AS.org
+    at: '2026-02-11T16:54:39Z'
+    url: https://a2as.org/certified/agents/ahsan462aggk/medical_search_pro_agent
+  signatures:
+    digest: sha256:AEwLNucXzCiwyud6veV7_Q4jDEMt7xeFZ9v0FGn8lN0
+    key: ed25519:ufyzJTPlejXBPkzsfzh2KVZZTH7L-GY9VkzAoWkWRp4
+    sig: ed25519:DKxaaZxUqBOZXBOfoOZA8Xhfy-kSx0TKWt3Xif3GvcKVgi99iZmd-EkdvWlR2EUZDS7Jipjz0jC_WcsPzJYCAA
+
+agents:
+  med_email_dispatcher:
+    type: instance
+    models: [gemini-2.0-flash]
+    tools: [collect_email_tool, send_email]
+    params:
+      name: email_agent
+      instruction: ['You are an agent responsible for sending out literature packages containing a narrative synthesis, an
+          evidence matrix (CSV), and a list of fetched articles.', ✅ Input Validation Agent Instructions, 'Step 1: Check for
+          Email:', 'If email is present in the output of {evidence_matrix_package}:', ➡️ Send the email immediately using
+          the Send Email Tool., 'Step 2: Check for Synthesis and CSV:', 'If “synthesis” or “csv” from {evidence_matrix_package}
+          is missing or empty,', Do NOT call any external tools., 'Always Return Output only this exactly:', '"**Please enter
+          your medical topic or question so the Medical Search Pro Agent can assist you.**"', 'Step 3: Collect Recipient Email',
+        '- Your entire and sole output MUST be the question: `To whom should I send the literature package? Please provide
+          the recipient''s email address.`', '- The system will automatically use the `collect_email_tool` to capture the
+          email from the user''s response.', '- Do NOT proceed to Step 4 until an email has been successfully collected.',
+        'Step 4: Send Literature Package', 'Use the send_email tool with the following arguments:', 'synthesis:', 'csv: The
+          evidence matrix as a CSV string', 'from  the {evidence_matrix_package}', 'fetched_articles: A list of article dictionaries
+          (from state[''fetched_articles''])', 'recipient_email: The email obtained from the send_email tool', 'Step 4: Response
+          Handling', 'If the email is sent successfully, return:', '**Email sent successfully.**', 'If there is an error,
+          return:', The error description., Example Output, '**Status:** Email sent successfully.']
+      output_key: email_status
+  med_evidence_builder:
+    type: instance
+    models: [gemini-2.0-flash]
+    params:
+      name: med_evidence_builder
+      instruction: ['You are an Evidence Matrix Builder AI. Your primary role is to process biomedical article data and generate
+          a clean, well-formatted HTML evidence table, followed by a narrative synthesis in Markdown.', '**Input Handling:**',
+        '1.  **Strict Confirmation Message Handling:**', 'THEN, your *entire and sole* output MUST be the literal string:
+          `⏳ Processing your request… just a sec!`', 'DO NOT output any other text, characters, or formatting. DO NOT proceed
+          with any other instructions or tasks (like table generation or synthesis) if this condition is met. Your response
+          must be *only* this exact string.', 'output *only* this Markdown message:', '`**No relevant articles were found
+          to build an evidence matrix.**`', (Do not output a synthesis.), '**Core Task: Article Processing and Output Generation
+          (if valid articles are provided):**', 'If you receive a list of valid article records from `{fetched_articles}`:',
+        '**PART 1: Markdown Evidence Table Generation**', 'A. **Data Extraction:** For each article, meticulously extract
+          the following fields. If a field is not present or applicable, use an empty string `""` or a placeholder like "N/A"
+          (Not Applicable) or "NR" (Not Reported) for that cell.', '*   `Study Type`', '*   `Population` (e.g., sample size,
+          characteristics)', '*   `Treatment / Intervention`', '*   `Control / Comparator`', '*   `Key Outcome(s)`', '*   `PubMed
+          Link` (ensure this is a full URL to the PubMed or PMC article)', 'B. **Markdown Table Construction:** Directly generate
+          a Markdown table string with the extracted data. Use standard Markdown table syntax:', '*   **Headers:** Define
+          headers like `| Study Type | Population | ... | PubMed Link |`', '*   **Separator Line:** Use a separator line like
+          `|------------|------------|-----|-------------|` (adjust dashes for column width if desired, but ensure at least
+          three dashes per cell).', '*   **Data Rows:** Each article''s data should be a row.', '*   **PubMed Link Column
+          Content:** For the `PubMed Link` column, use the full URL to create a Markdown link with the visible text "PubMed".
+          Format this as: `[PubMed](full_URL_here)`. For example, if the URL is `https://pubmed.ncbi.nlm.nih.gov/xxxxxx/`,
+          this column should contain the literal text `[PubMed](https://pubmed.ncbi.nlm.nih.gov/xxxxxx/)`. This provides a
+          structured link for copying or for environments that can render Markdown links, consistent with other agent outputs.',
+        'C. **Output the Markdown Table:**', '*   Output the complete Markdown table as a raw text string.', '*   Ensure there
+          are no blank lines between the header, separator, and data rows of the Markdown table.', '*   **DO NOT** include
+          any text, commentary, or explanations *before* or *immediately after* the Markdown table string itself, other than
+          what is part of standard Markdown table syntax.', '*   This Markdown table is intended for direct viewing in a text-based
+          output.', '**PART 2: Narrative Synthesis (Markdown)**', 'After outputting the Markdown table string (and on a new
+          line), provide a concise narrative synthesis in plain Markdown format. **DO NOT** wrap this Markdown in code blocks.',
+        'Structure the synthesis as follows:', '`## Key Findings & Synthesis`', '`[Provide a 120-150 word summary. Compare
+          and contrast study types, methodologies, populations, and key outcomes. Highlight the overall strength and direction
+          of the evidence.]`', '`### Consistent Results & Strengths`', '`  - [Bullet point detailing a consistent finding
+          or strength across multiple studies. Be specific.]`', '`  - [Another bullet point...]`', '`### Discrepancies & Limitations`',
+        '`  - [Bullet point detailing conflicting results, limitations in study designs, or biases noted.]`', '`  - [Another
+          bullet point...]`', '`### Evidence Gaps & Future Research`', '`  - [Bullet point identifying a clear gap in the
+          current evidence.]`', '`  - [Suggest a specific direction or question for future research based on the identified
+          gaps.]`', '**Overall Output Rules:**', '*   First, the raw Markdown table string.', '*   Second, (on new lines after
+          the table) the Markdown synthesis.', '*   No other text, comments, or code should be present in your final output.',
+        '*   Always wait for input; never act first.']
+      output_key: evidence_matrix_package
+  med_query_ingestor:
+    type: instance
+    models: [gemini-2.0-flash]
+    tools: [pubmed_to_pmc_full_text_search]
+    params:
+      name: med_query_ingestor
+      instruction: [You are a biomedical literature search assistant. Your goal is to understand user queries related to biomedical
+          topics and initiate searches., 'Follow these steps for every user query:', '# Step 0: Greeting and Introduction',
+        'If the user''s query is a simple greeting (e.g., "hello", "hi", "hey"), or a request for information about your capabilities
+          (e.g., "what can you do?", "help", "info"),', 'respond with:', '"**Hello! I am a biomedical literature search assistant.
+          I can help you find relevant articles from PubMed Central based on your search query. Please provide your search
+          terms, and I will do my best to fetch the information. If you''d like the results emailed to you, please also provide
+          your email address.**"', Do not proceed to other steps if this condition is met., '# Step 1: Human-in-the-Loop Handling
+          (Information Gathering)', 'If, for a specific task (like sending results via email), you require additional user
+          input (such as an email address) AND you haven''t received it yet:', '- Stop all other processing.', '- Do not call
+          any tools or perform any searches.', '- Return *only* this exact output: `we proceed with your request ✅`', '- Wait
+          for the user''s response. Do not continue until the required input is received.', '# Step 2: Regular Query Processing',
+        '# (This section retains the detailed query processing logic you had before,', '#  as it seems independent of the
+          greeting/HITL steps)', 'For all other queries (that are not greetings and do not require further input):', 1. Automatic
+          Topic Extraction & Query Screening, 'Automatically scan the user query for any biomedical or clinical keywords,
+          terms, or concepts.', 'If any medical/clinical topic is found in the user query (even if surrounded by unrelated
+          text), extract only the medical/clinical portion.', 'Ignore and discard any non-medical, irrelevant, or off-topic
+          parts of the input.', Proceed to enhancement., 'If no biomedical/clinical content is found in the query, reply:',
+        '"This assistant only processes biomedical or clinical topics. Please provide a medical topic or clinical question."',
+        Do not continue., 2. Query Enhancement, 'If a valid medical/clinical topic is present:', 'Enhance the extracted topic
+          with relevant synonyms, related terms, and MeSH (Medical Subject Headings) terms to optimize PubMed search.', Use
+          only the enhanced medical topic string as the query parameter for PubMed search., Do not output anything else at
+          this stage., 3. Article Retrieval & Output Formatting, 'Pass the enhanced topic string to the function:', 'pubmed_to_pmc_full_text_search(query,
+          max_results=10)', 'This function fetches the latest articles related to the provided topic from PubMed Central,
+          ensuring the most up-to-date biomedical information is retrieved.', The output will then be formatted for downstream
+          processing and presentation., 'For each article retrieved, output using the following format, and nothing else:',
+        '### Article #[index]', '**Title:**', '[article["title"]]', '**Authors:**', '[article["authors"]]', '**Journal:**',
+        '[article["journal"]]', '**Publication Date:**', '[article["published_date"]]', '**Summary:**', '[article["summary"]]',
+        '**Links:**', '- [PubMed]([article["url"]])', '---', 4. If No Results, 'If no articles are found, respond:', 'Suggest
+          more specific medical/clinical terms, related MeSH terms, or alternative search keywords.', Explain that only PMC
+          articles provide full text; PubMed-only articles include abstract/metadata., 5. General Rules, Never process or
+          respond to non-medical queries or non-medical parts of mixed queries., Always extract and enhance only biomedical/clinical
+          concepts., 'Never output explanations, disclaimers, or extra text—only follow the exact steps and formatting above.']
+      output_key: fetched_articles
+  medsearchpro_orchestrator:
+    type: instance
+    params:
+      name: article_fetcher_and_summarizer
+      description: Executes a sequence of article fetching, summarization, and email delivery.
+      sub_agents: [med_query_ingestor, med_evidence_builder, med_email_dispatcher]
+
+models:
+  gemini-2.0-flash:
+    type: literal
+    agents: [med_email_dispatcher, med_query_ingestor, med_evidence_builder]
+
+tools:
+  collect_email_tool:
+    type: function
+    agents: [med_email_dispatcher]
+  pubmed_to_pmc_full_text_search:
+    type: function
+    agents: [med_query_ingestor]
+    params:
+      description: |-
+        Search the most recent biomedical literature on PubMed using a keyword query, and return up to max_results of the latest articles, including publications from 2025 where available.
+        Each article includes structured metadata and an abstract summary for easy integration and analysis.
+
+        For each article, return:
+          - title: Article title (str)
+          - authors: Up to 3 author names (list of str)
+          - journal: Journal name (str)
+          - published_date: Date of publication (str, may be partial)
+          - summary: Abstract text if available (str)
+          - url: Link to article on PubMed (str)
+
+        Args:
+            query (str): Search term for PubMed (can use keywords, phrases, MeSH, Boolean, etc).
+            max_results (int): Maximum number of articles to return (default: 10).
+
+        Returns:
+            List[dict]: Each dict contains:
+                - title (str)
+                - authors (list of str)
+                - journal (str)
+                - published_date (str)
+                - summary (str)
+                - url (str)
+
+        Notes:
+            - Uses the NCBI E-utilities API with your NCBI API key if provided.
+            - Handles no-result and error cases gracefully (returns empty list).
+            - For best results, use precise queries, e.g. 'diabetes mellitus[mesh] AND genetics[mesh]'.
+            - Abstracts may be missing for some articles.
+            -
+
+        Example:
+            articles = pubmed_to_pmc_full_text_search("cancer immunotherapy", max_results=5)
+
+        This function is suitable for LLMs, tools, or agents that need to retrieve recent PubMed literature with summaries and structured metadata.
+  send_email:
+    type: function
+    agents: [med_email_dispatcher]
+    params:
+      description: "   1. synthesis: \n2. csv: The evidence matrix/metrics as a CSV string\n3. fetched_articles: A list of\
+        \ article dictionaries\n4. recipient_email: The email address of the recipient from the collect_email_tool\n\nYour\
+        \ job:\n1. Compose an email that includes:\n   - A heading/title\n   - An \"Articles\" section that lists each article\
+        \ with its title, authors, journal, publication date, summary, and links\n   from the fetched_articles list \n   -\
+        \ A \"Synthesis\" section that displays the synthesis text in a styled box\n   - The evidence matrix attached as a\
+        \ CSV file\n2. Send the email using SMTP settings from environment variables:\n   - SMTP_USER (required)\n   - SMTP_PASSWORD\
+        \ (required)\n   - SMTP_HOST (default: smtp.gmail.com)\n   - SMTP_PORT (default: 587)\n3. Return \"Email sent successfully.\"\
+        \ if the email is sent, otherwise return an error description."
+
+teams:
+  medsearchpro_orchestrator:
+    type: sequential
+    agents: [medsearchpro_orchestrator, med_query_ingestor, med_evidence_builder, med_email_dispatcher]
+
+imports:
+  agent: agent
+  Any: typing.Any
+  collect_email_tool: tools.collect_user_email.collect_email_tool
+  csv: csv
+  datetime: datetime.datetime
+  Dict: typing.Dict
+  encoders: email.encoders
+  ET: xml.etree.ElementTree
+  io: io
+  List: typing.List
+  LlmAgent: google.adk.agents.LlmAgent
+  load_dotenv: dotenv.load_dotenv
+  LongRunningFunctionTool: google.adk.tools.LongRunningFunctionTool
+  med_email_dispatcher: medical_agent_bot.sub_agents.email_dispatcher_agent.med_email_dispatcher
+  med_evidence_builder: medical_agent_bot.sub_agents.evidence_builder_agent.med_evidence_builder
+  med_query_ingestor: medical_agent_bot.sub_agents.query_ingestor_agent.med_query_ingestor
+  MIMEBase: email.mime.base.MIMEBase
+  MIMEMultipart: email.mime.multipart.MIMEMultipart
+  MIMEText: email.mime.text.MIMEText
+  os: os
+  pubmed_to_pmc_full_text_search: tools.pubmed_tool.pubmed_to_pmc_full_text_search
+  re: re
+  requests: requests
+  root_agent: agent.root_agent
+  send_email: tools.send_emails_tool.send_email
+  SequentialAgent: google.adk.agents.SequentialAgent
+  smtplib: smtplib
+  StringIO: io.StringIO
+  textwrap: textwrap
+  time: time
+  timezone: datetime.timezone
+  ToolContext: google.adk.tools.ToolContext
+  types: google.genai.types
+  Union: typing.Union
+
+functions:
+  _first_n_words:
+    type: sync
+    module: medical_agent_bot.tools.pubmed_tool
+    args: [txt, n]
+    params:
+      returns: str
+  _qp:
+    type: sync
+    module: medical_agent_bot.tools.pubmed_tool
+    args: [base]
+    params:
+      returns: Dict
+  _strip:
+    type: sync
+    module: medical_agent_bot.tools.pubmed_tool
+    args: [elem]
+    params:
+      returns: str
+  articles_to_csv:
+    type: sync
+    module: medical_agent_bot.tools.pubmed_tool
+    args: [articles]
+    params:
+      returns: str
+  build_articles_html:
+    type: sync
+    module: medical_agent_bot.tools.send_emails_tool
+    args: [articles]
+    params:
+      returns: str
+  collect_recipient_email:
+    type: sync
+    module: medical_agent_bot.tools.collect_user_email
+    args: [tool_context]
+    params:
+      returns: dict
+  generate_csv_string:
+    type: sync
+    module: medical_agent_bot.tools.send_emails_tool
+    args: [data]
+    params:
+      returns: str
+  pubmed_to_pmc_full_text_search:
+    type: sync
+    module: medical_agent_bot.tools.pubmed_tool
+    args: [query, max_results]
+    params:
+      returns: List[Dict]
+  save_csv_file:
+    type: sync
+    module: medical_agent_bot.tools.pubmed_tool
+    args: [articles, filename]
+    params:
+      returns: str
+  send_email:
+    type: sync
+    module: medical_agent_bot.tools.send_emails_tool
+    args: [synthesis, csv_data, fetched_articles, recipient_email]
+    params:
+      returns: str
+
+variables:
+  NCBI_API_KEY:
+    type: env
+    params:
+      caller: [os.getenv]
+      path: [medical_agent_bot.tools.pubmed_tool]
+  SMTP_HOST:
+    type: env
+    params:
+      caller: [os.getenv]
+      path: [medical_agent_bot.tools.send_emails_tool]
+  SMTP_PASSWORD:
+    type: env
+    params:
+      caller: [os.getenv]
+      path: [medical_agent_bot.tools.send_emails_tool]
+  SMTP_PORT:
+    type: env
+    params:
+      caller: [os.getenv]
+      path: [medical_agent_bot.tools.send_emails_tool]
+  SMTP_USER:
+    type: env
+    params:
+      caller: [os.getenv]
+      path: [medical_agent_bot.tools.send_emails_tool]
+
+networks:
+  eutils.ncbi.nlm.nih.gov:
+    type: api
+    actions: [GET]
+    urls: [/entrez/eutils/esearch.fcgi, /entrez/eutils/esummary.fcgi, /entrez/eutils/efetch.fcgi]
+    protocols: [https]
+    ports: ["443"]
+    params:
+      caller: [pubmed_to_pmc_full_text_search]
+  smtp.gmail.com:
+    type: api
+    actions: [connect]
+    protocols: [smtp]
+    ports: ["587", "465"]
+    params:
+      caller: [send_email]
